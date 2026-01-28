@@ -317,8 +317,24 @@
 
         peer.on('open', (id) => {
             myIdEl.innerText = id;
-            generateQRCode(id);
+            
+            // --- CHANGE START: Generate URL QR and Check Auto-Connect ---
+            // 1. Generate QR as a Link
+            const currentUrl = window.location.href.split('?')[0];
+            const connectionLink = `${currentUrl}?remote=${id}`;
+            generateQRCode(connectionLink);
+            
             statusMsg.innerText = "Ready. Scan this on the other device.";
+
+            // 2. Check if we opened via a QR scan (URL has ?remote=...)
+            const params = new URLSearchParams(window.location.search);
+            const remoteId = params.get('remote');
+            if (remoteId) {
+                statusMsg.innerText = "Found peer in URL. Connecting...";
+                // Small delay to ensure UI is ready
+                setTimeout(() => connectToPeer(remoteId), 500);
+            }
+            // --- CHANGE END ---
         });
 
         peer.on('connection', (c) => {
@@ -357,11 +373,23 @@
             { facingMode: "environment" }, 
             config,
             (decodedText) => {
-                statusMsg.innerText = "Found: " + decodedText;
+                // --- CHANGE START: Handle URL in in-app scanner ---
+                let targetId = decodedText;
+                // If the QR contains the full URL, extract the ID
+                if (decodedText.includes("remote=")) {
+                    try {
+                        const url = new URL(decodedText);
+                        const id = url.searchParams.get("remote");
+                        if(id) targetId = id;
+                    } catch(e) { console.log("QR parse error", e); }
+                }
+
+                statusMsg.innerText = "Found: " + targetId;
                 html5QrCode.stop().then(() => {
                     readerDiv.style.display = 'none';
-                    connectToPeer(decodedText);
+                    connectToPeer(targetId);
                 });
+                // --- CHANGE END ---
             },
             (errorMessage) => {}
         ).catch(err => {
@@ -387,6 +415,8 @@
         conn.on('data', (data) => handleIncomingData(data));
         conn.on('close', () => {
             alert("Connection Lost");
+            // Remove params from URL on reload so we don't reconnect loop
+            window.history.replaceState({}, document.title, window.location.pathname);
             location.reload();
         });
     }
