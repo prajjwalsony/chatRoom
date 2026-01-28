@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Improved Viewport for Mobile: prevents zooming and handles layout scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>P2P Sync</title>
 
     <!-- Libraries -->
@@ -15,7 +16,7 @@
 
     <style>
         :root {
-            --primary: #4F46E5; /* Indigo */
+            --primary: #4F46E5;
             --primary-dark: #4338ca;
             --bg-app: #f3f4f6;
             --bg-chat: #e5e7eb;
@@ -27,55 +28,64 @@
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #d1d5db; /* Grey background for desktop */
+        html, body {
             margin: 0;
-            display: flex;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: #d1d5db;
+            /* CRITICAL FIX: Use dvh to account for mobile browser bars */
+            height: 100dvh; 
+            width: 100%;
+            overflow: hidden; /* Prevent body scroll, handle it inside containers */
         }
 
-        /* Mobile Container Simulation */
+        /* App Container */
         .app-container {
             width: 100%;
-            max-width: 480px; /* Mobile width on desktop */
+            max-width: 480px;
+            margin: 0 auto;
             background: var(--bg-app);
+            height: 100%; /* Fills the dvh from body */
             display: flex;
             flex-direction: column;
             position: relative;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* --- VIEWS --- */
+        /* Common style for both panels to fill space */
+        .view-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             height: 100%;
+            overflow: hidden;
+        }
+
+        /* CONNECTION PANEL */
+        #connection-panel {
+            overflow-y: auto; /* Allow scrolling if content is tall */
+            padding: 20px;
+        }
+
+        /* CHAT INTERFACE */
+        #chat-interface {
+            display: none; /* Hidden by default */
+            background: var(--bg-chat);
         }
 
         /* Header */
         header {
             background: white;
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 15px;
+            text-align: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            flex-shrink: 0; /* Prevent header from shrinking */
             z-index: 10;
         }
-        header h2 {
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #111;
-        }
+        header h2 { margin: 0; font-size: 1.1rem; color: #111; }
 
-        /* Main Scrollable Area */
-        .main-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* CARDS (Connection Screen) */
+        /* CARDS */
         .card {
             background: white;
             padding: 20px;
@@ -83,7 +93,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             text-align: center;
             margin-bottom: 20px;
-            animation: fadeIn 0.3s ease;
         }
 
         .qr-wrapper {
@@ -96,35 +105,15 @@
         }
 
         #my-id {
-            font-family: monospace;
             background: #eff6ff;
             color: var(--primary);
-            padding: 8px 12px;
+            padding: 8px;
             border-radius: 6px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             word-break: break-all;
-            margin-bottom: 15px;
+            font-family: monospace;
+            margin-bottom: 10px;
         }
-
-        /* Buttons */
-        .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 500;
-            width: 100%;
-            cursor: pointer;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .btn:active { transform: scale(0.98); }
-        .btn:hover { background: var(--primary-dark); }
 
         /* Scanner */
         #reader {
@@ -135,68 +124,82 @@
             display: none;
         }
 
-        /* CHAT INTERFACE */
-        #chat-interface {
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            height: 100%;
-            background: var(--bg-chat);
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 20;
+        /* Buttons */
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 1rem;
+            width: 100%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
+        .btn:active { transform: scale(0.98); }
 
+        /* --- CHAT AREA SPECIFICS --- */
+        
+        /* Messages Area */
         #messages {
-            flex: 1;
+            flex-grow: 1; /* Takes all available space between header and footer */
+            overflow-y: auto; /* Scrollable */
             padding: 15px;
-            overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            background: var(--bg-chat);
+            
+            /* Smooth scrolling */
+            scroll-behavior: smooth;
         }
 
-        /* Message Bubbles */
         .msg {
-            max-width: 75%;
+            max-width: 80%;
             padding: 10px 14px;
             border-radius: 18px;
             font-size: 0.95rem;
             line-height: 1.4;
-            position: relative;
             word-wrap: break-word;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         .msg.sent {
             background: var(--msg-sent);
             color: var(--msg-sent-text);
             align-self: flex-end;
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 2px;
         }
         .msg.received {
             background: var(--msg-received);
             color: var(--msg-received-text);
             align-self: flex-start;
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 2px;
         }
         .msg.system {
             align-self: center;
             background: rgba(0,0,0,0.1);
             color: #555;
             font-size: 0.75rem;
-            padding: 4px 10px;
+            padding: 4px 12px;
             border-radius: 10px;
-            box-shadow: none;
+            margin: 5px 0;
         }
-        .msg a { color: inherit; text-decoration: underline; }
+        .msg a { color: inherit; }
 
-        /* Chat Input Area */
+        /* Chat Footer (Input Area) */
         .chat-footer {
             background: white;
             padding: 10px;
+            border-top: 1px solid #e5e7eb;
             display: flex;
             align-items: center;
             gap: 10px;
-            border-top: 1px solid #e5e7eb;
+            flex-shrink: 0; /* Don't shrink when keyboard opens */
+            
+            /* CRITICAL MOBILE FIXES */
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* iOS Home Bar fix */
         }
 
         .input-wrapper {
@@ -207,94 +210,74 @@
         input[type="text"] {
             width: 100%;
             padding: 12px 15px;
-            padding-right: 40px;
             border: 1px solid #e5e7eb;
             border-radius: 24px;
             background: #f9fafb;
-            font-size: 1rem;
+            font-size: 16px; /* Prevents iOS zoom on focus */
             outline: none;
         }
         input[type="text"]:focus { border-color: var(--primary); background: white; }
 
-        /* File Button Styling */
-        .file-btn-label {
+        .icon-btn {
             background: #f3f4f6;
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             color: #555;
-            transition: 0.2s;
+            border: none;
+            padding: 0;
         }
-        .file-btn-label:hover { background: #e5e7eb; color: var(--primary); }
+        .icon-btn.send { background: var(--primary); color: white; }
+
         #file-input { display: none; }
 
-        /* Send Button */
-        #send-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Scrollbar aesthetics */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     
-    <!-- CONNECTION PANEL -->
-    <div id="connection-panel" class="main-content">
-        <header style="background: transparent; box-shadow: none; margin-bottom: 10px;">
+    <!-- CONNECTION VIEW -->
+    <div id="connection-panel" class="view-panel">
+        <header>
             <h2>P2P Connect</h2>
         </header>
 
-        <!-- Card 1: My ID -->
         <div class="card">
-            <h3 style="margin:0 0 10px 0; font-size: 1rem; color: #555;">Your Identity</h3>
+            <h3 style="margin:0 0 10px 0; color: #555;">Your Identity</h3>
             <div class="qr-wrapper">
                 <div id="my-qr"></div>
             </div>
             <div id="my-id">Initializing...</div>
-            <p style="font-size: 0.8rem; color: #888; margin: 0;">Let the other device scan this.</p>
         </div>
 
-        <!-- Card 2: Scan -->
         <div class="card">
-            <h3 style="margin:0 0 15px 0; font-size: 1rem; color: #555;">Connect to Peer</h3>
+            <h3 style="margin:0 0 15px 0; color: #555;">Scan Peer</h3>
             <button class="btn" id="start-scan-btn">
                 <span>📷</span> Scan QR Code
             </button>
             <div id="reader"></div>
-            <p id="status-msg" style="margin-top:15px; font-size: 0.9rem; color: #666;">Waiting for action...</p>
+            <p id="status-msg" style="margin-top:10px; font-size: 0.9rem; color: #666;">Waiting...</p>
         </div>
     </div>
 
-    <!-- CHAT INTERFACE -->
-    <div id="chat-interface">
+    <!-- CHAT VIEW -->
+    <div id="chat-interface" class="view-panel">
         <header>
             <h2>Connected Peer</h2>
         </header>
 
         <div id="messages">
-            <!-- Messages appear here -->
+            <!-- Messages go here -->
         </div>
         
         <div class="chat-footer">
-            <!-- File Attachment -->
-            <label for="file-input" class="file-btn-label" title="Attach File">
+            <!-- File Button -->
+            <label for="file-input" class="icon-btn" title="Attach File">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
             </label>
             <input type="file" id="file-input">
@@ -305,12 +288,9 @@
             </div>
 
             <!-- Send Button -->
-            <button class="btn" id="send-btn">
+            <button class="icon-btn send" id="send-btn">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"></path></svg>
             </button>
-            
-            <!-- Hidden original button for logic compatibility, handled via JS -->
-            <button id="send-file-btn" style="display:none;"></button>
         </div>
     </div>
 
@@ -333,16 +313,14 @@
 
     // --- 1. INITIALIZE PEERJS ---
     function initPeer() {
-        // Create a new Peer object (uses free default PeerJS cloud server for signaling)
         peer = new Peer();
 
         peer.on('open', (id) => {
             myIdEl.innerText = id;
             generateQRCode(id);
-            statusMsg.innerText = "Ready. Scan or be scanned.";
+            statusMsg.innerText = "Ready. Scan this on the other device.";
         });
 
-        // Listen for incoming connections
         peer.on('connection', (c) => {
             conn = c;
             setupConnection();
@@ -354,20 +332,18 @@
         });
     }
 
-    // --- 2. QR CODE GENERATION ---
+    // --- 2. QR CODE ---
     function generateQRCode(text) {
         document.getElementById('my-qr').innerHTML = "";
         new QRCode(document.getElementById("my-qr"), {
             text: text,
             width: 150,
             height: 150,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
+            correctLevel : QRCode.CorrectLevel.L
         });
     }
 
-    // --- 3. QR SCANNING ---
+    // --- 3. SCANNER ---
     document.getElementById('start-scan-btn').addEventListener('click', () => {
         const readerDiv = document.getElementById('reader');
         readerDiv.style.display = 'block';
@@ -378,58 +354,46 @@
         const config = { fps: 10, qrbox: { width: 250, height: 250 } };
         
         html5QrCode.start(
-            { facingMode: "environment" }, // Use back camera
+            { facingMode: "environment" }, 
             config,
-            (decodedText, decodedResult) => {
-                // Success
+            (decodedText) => {
                 statusMsg.innerText = "Found: " + decodedText;
                 html5QrCode.stop().then(() => {
                     readerDiv.style.display = 'none';
                     connectToPeer(decodedText);
                 });
             },
-            (errorMessage) => {
-                // Parse error, ignore
-            }
+            (errorMessage) => {}
         ).catch(err => {
             alert("Camera Error: " + err);
-            statusMsg.innerText = "Camera failed. Check permissions.";
         });
     });
 
-    // --- 4. CONNECT TO PEER ---
+    // --- 4. CONNECT ---
     function connectToPeer(remoteId) {
-        statusMsg.innerText = "Connecting to peer...";
+        statusMsg.innerText = "Connecting...";
         conn = peer.connect(remoteId);
         setupConnection();
     }
 
-    // --- 5. CONNECTION HANDLER ---
     function setupConnection() {
         conn.on('open', () => {
-            statusMsg.innerText = "Connected!";
-            
-            // Switch UI
+            // Switch UI using Flexbox to ensure full height
             connectionPanel.style.display = 'none';
-            chatInterface.style.display = 'flex';
-            addMessage("System", "Secure Connection Established", "system");
+            chatInterface.style.display = 'flex'; 
+            addMessage("System", "Connected!", "system");
         });
 
-        conn.on('data', (data) => {
-            handleIncomingData(data);
-        });
-
+        conn.on('data', (data) => handleIncomingData(data));
         conn.on('close', () => {
             alert("Connection Lost");
             location.reload();
         });
     }
 
-    // --- 6. SENDING DATA ---
-    
-    // Send Text
+    // --- 5. SENDING ---
     document.getElementById('send-btn').addEventListener('click', () => {
-        const msg = msgInput.value;
+        const msg = msgInput.value.trim();
         if (!msg) return;
 
         const payload = { type: 'text', content: msg };
@@ -438,35 +402,22 @@
         msgInput.value = "";
     });
 
-    // Send Text on "Enter" key
     msgInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            document.getElementById('send-btn').click();
-        }
+        if (e.key === 'Enter') document.getElementById('send-btn').click();
     });
 
-    // Send File (Triggered when file is selected)
     fileInput.addEventListener('change', () => {
         const file = fileInput.files[0];
         if (!file) return;
 
-        // Visual feedback before sending
         addMessage("System", `Sending ${file.name}...`, "system");
-
         const blob = new Blob([file], { type: file.type });
-        
-        conn.send({
-            type: 'file',
-            file: blob,
-            fileName: file.name,
-            fileType: file.type
-        });
-        
+        conn.send({ type: 'file', file: blob, fileName: file.name, fileType: file.type });
         addMessage("You", `Sent file: ${file.name}`, "sent");
-        fileInput.value = ""; // Reset input
+        fileInput.value = "";
     });
 
-    // --- 7. RECEIVING DATA ---
+    // --- 6. RECEIVING ---
     function handleIncomingData(data) {
         if (data.type === 'text') {
             addMessage("Peer", data.content, "received");
@@ -474,40 +425,30 @@
         else if (data.type === 'file') {
             const blob = new Blob([data.file], { type: data.fileType });
             const url = URL.createObjectURL(blob);
-            
-            const link = `
-                <div style="font-weight:600; margin-bottom:4px;">📄 ${data.fileName}</div>
-                <a href="${url}" download="${data.fileName}" style="background:white; color:#333; text-decoration:none; padding:5px 10px; border-radius:4px; font-size:0.8rem; border:1px solid #ccc; display:inline-block;">Download File</a>
-            `;
+            const link = `<div>📄 ${data.fileName}</div><a href="${url}" download="${data.fileName}" style="display:inline-block; margin-top:5px; text-decoration:underline;">Download</a>`;
             addMessage("Peer", link, "received");
         }
     }
 
-    // UI Helper: Add Message
     function addMessage(sender, text, type) {
         const div = document.createElement('div');
         div.className = `msg ${type}`;
         
-        // If it's a file link (contains HTML), use innerHTML, else innerText for security
         if (text.includes('href=') || text.includes('📄')) {
             div.innerHTML = text;
         } else {
-            // Check if system message
-            if(type === 'system') {
-                div.innerText = text;
-            } else {
-                div.innerHTML = `<strong>${sender === 'You' ? '' : ''}</strong> ${text}`;
-            }
+            if(type === 'system') div.innerText = text;
+            else div.innerHTML = text;
         }
         
         messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        // Force scroll to bottom
+        setTimeout(() => {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }, 50);
     }
 
-    // Start
     initPeer();
-
 </script>
-
 </body>
 </html>
