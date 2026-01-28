@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR WebRTC P2P Share</title>
+
+    <!-- Libraries -->
+    <!-- PeerJS for WebRTC wrapper -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- QRCode.js for generating QR codes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Html5-Qrcode for scanning -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        :root {
+            --primary: #007bff;
+            --bg: #f4f4f9;
+            --text: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+        header {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            max-width: 600px;
+            gap: 1rem;
+            padding: 1rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        /* Connection Section */
+        #my-qr {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        #reader {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none; /* Hidden by default */
+        }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 5px;
+        }
+        .btn:disabled { background: #ccc; }
+        
+        /* Chat Section */
+        #chat-interface {
+            display: none; /* Hidden until connected */
+            flex-direction: column;
+            height: 100%;
+        }
+        #messages {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            background: #fafafa;
+            margin-bottom: 10px;
+            min-height: 200px;
+        }
+        .msg {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 5px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .msg.sent { background: #dcf8c6; align-self: flex-end; margin-left: auto; }
+        .msg.received { background: #fff; border: 1px solid #ddd; }
+        .msg.system { background: #eee; text-align: center; max-width: 100%; font-size: 0.8rem; }
+        
+        .controls {
+            display: flex;
+            gap: 5px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h2>P2P QR Share</h2>
+</header>
+
+<div class="container">
+    
+    <!-- CONNECTION PANEL -->
+    <div id="connection-panel" class="card">
+        <h3>1. My Identity</h3>
+        <p>Show this to your peer to let them connect.</p>
+        <div id="my-qr"></div>
+        <div id="my-id" style="font-weight: bold; margin-bottom: 10px; word-break: break-all;">Generating ID...</div>
+
+        <hr>
+
+        <h3>2. Connect to Peer</h3>
+        <button class="btn" id="start-scan-btn">Scan Peer's QR</button>
+        <div id="reader"></div>
+        <p id="status-msg">Waiting for connection...</p>
+    </div>
+
+    <!-- CHAT/FILE PANEL -->
+    <div id="chat-interface" class="card">
+        <div id="messages"></div>
+        
+        <div class="controls">
+            <input type="text" id="msg-input" placeholder="Type a message...">
+            <button class="btn" id="send-btn">Send</button>
+        </div>
+        <div class="controls" style="margin-top: 5px;">
+            <input type="file" id="file-input">
+            <button class="btn" id="send-file-btn">Share File</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- VARIABLES ---
+    let peer = null;
+    let conn = null;
+    let html5QrCode = null;
+
+    // DOM Elements
+    const myIdEl = document.getElementById('my-id');
+    const statusMsg = document.getElementById('status-msg');
+    const connectionPanel = document.getElementById('connection-panel');
+    const chatInterface = document.getElementById('chat-interface');
+    const messagesDiv = document.getElementById('messages');
+    const msgInput = document.getElementById('msg-input');
+    const fileInput = document.getElementById('file-input');
+
+    // --- 1. INITIALIZE PEERJS ---
+    function initPeer() {
+        // Create a new Peer object (uses free default PeerJS cloud server for signaling)
+        peer = new Peer();
+
+        peer.on('open', (id) => {
+            myIdEl.innerText = "ID: " + id;
+            generateQRCode(id);
+            statusMsg.innerText = "Ready to connect. Scan or be scanned.";
+        });
+
+        // Listen for incoming connections
+        peer.on('connection', (c) => {
+            conn = c;
+            setupConnection();
+        });
+
+        peer.on('error', (err) => {
+            console.error(err);
+            alert("PeerJS Error: " + err.type);
+        });
+    }
+
+    // --- 2. QR CODE GENERATION ---
+    function generateQRCode(text) {
+        document.getElementById('my-qr').innerHTML = "";
+        new QRCode(document.getElementById("my-qr"), {
+            text: text,
+            width: 128,
+            height: 128
+        });
+    }
+
+    // --- 3. QR SCANNING ---
+    document.getElementById('start-scan-btn').addEventListener('click', () => {
+        const readerDiv = document.getElementById('reader');
+        readerDiv.style.display = 'block';
+
+        html5QrCode = new Html5Qrcode("reader");
+        
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        html5QrCode.start(
+            { facingMode: "environment" }, // Use back camera
+            config,
+            (decodedText, decodedResult) => {
+                // Success
+                statusMsg.innerText = "QR Found! Connecting to: " + decodedText;
+                html5QrCode.stop().then(() => {
+                    readerDiv.style.display = 'none';
+                    connectToPeer(decodedText);
+                });
+            },
+            (errorMessage) => {
+                // Parse error, ignore
+            }
+        ).catch(err => {
+            alert("Camera Error: " + err);
+        });
+    });
+
+    // --- 4. CONNECT TO PEER ---
+    function connectToPeer(remoteId) {
+        conn = peer.connect(remoteId);
+        setupConnection();
+    }
+
+    // --- 5. CONNECTION HANDLER ---
+    function setupConnection() {
+        conn.on('open', () => {
+            statusMsg.innerText = "Connected!";
+            
+            // Switch UI
+            connectionPanel.style.display = 'none';
+            chatInterface.style.display = 'flex';
+            addMessage("System", "P2P Connection Established", "system");
+        });
+
+        conn.on('data', (data) => {
+            handleIncomingData(data);
+        });
+
+        conn.on('close', () => {
+            alert("Connection Lost");
+            location.reload();
+        });
+    }
+
+    // --- 6. SENDING DATA ---
+    
+    // Send Text
+    document.getElementById('send-btn').addEventListener('click', () => {
+        const msg = msgInput.value;
+        if (!msg) return;
+
+        const payload = { type: 'text', content: msg };
+        conn.send(payload);
+        addMessage("You", msg, "sent");
+        msgInput.value = "";
+    });
+
+    // Send File
+    document.getElementById('send-file-btn').addEventListener('click', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        addMessage("System", `Sending ${file.name}...`, "system");
+
+        // Convert file to Blob/ArrayBuffer to send
+        const blob = new Blob([file], { type: file.type });
+        
+        conn.send({
+            type: 'file',
+            file: blob,
+            fileName: file.name,
+            fileType: file.type
+        });
+        
+        addMessage("You", `Sent file: ${file.name}`, "sent");
+    });
+
+    // --- 7. RECEIVING DATA ---
+    function handleIncomingData(data) {
+        if (data.type === 'text') {
+            addMessage("Peer", data.content, "received");
+        } 
+        else if (data.type === 'file') {
+            const blob = new Blob([data.file], { type: data.fileType });
+            const url = URL.createObjectURL(blob);
+            
+            const link = `<a href="${url}" download="${data.fileName}">Download ${data.fileName}</a>`;
+            addMessage("Peer", `Sent a file: ${link}`, "received");
+        }
+    }
+
+    // UI Helper: Add Message
+    function addMessage(sender, text, type) {
+        const div = document.createElement('div');
+        div.className = `msg ${type}`;
+        div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Start
+    initPeer();
+
+</script>
+
+</body>
+</html>
