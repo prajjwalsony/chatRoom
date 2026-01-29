@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Improved Viewport for Mobile: prevents zooming and handles layout scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>P2P Sync</title>
+    <title>P2P Sync & Video</title>
 
     <!-- Libraries -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -33,27 +32,23 @@
             padding: 0;
             font-family: 'Inter', sans-serif;
             background: #d1d5db;
-            /* CRITICAL FIX: Use dvh to account for mobile browser bars */
             height: 100dvh; 
             width: 100%;
-            overflow: hidden; /* Prevent body scroll, handle it inside containers */
+            overflow: hidden; 
         }
 
-        /* App Container */
         .app-container {
             width: 100%;
             max-width: 480px;
             margin: 0 auto;
             background: var(--bg-app);
-            height: 100%; /* Fills the dvh from body */
+            height: 100%; 
             display: flex;
             flex-direction: column;
             position: relative;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
 
-        /* --- VIEWS --- */
-        /* Common style for both panels to fill space */
         .view-panel {
             flex: 1;
             display: flex;
@@ -62,30 +57,26 @@
             overflow: hidden;
         }
 
-        /* CONNECTION PANEL */
-        #connection-panel {
-            overflow-y: auto; /* Allow scrolling if content is tall */
-            padding: 20px;
-        }
+        #connection-panel { overflow-y: auto; padding: 20px; }
+        #chat-interface { display: none; background: var(--bg-chat); }
 
-        /* CHAT INTERFACE */
-        #chat-interface {
-            display: none; /* Hidden by default */
-            background: var(--bg-chat);
-        }
-
-        /* Header */
         header {
             background: white;
             padding: 15px;
             text-align: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            flex-shrink: 0; /* Prevent header from shrinking */
+            flex-shrink: 0; 
             z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        header h2 { margin: 0; font-size: 1.1rem; color: #111; }
+        header h2 { margin: 0; font-size: 1.1rem; color: #111; flex-grow: 1; }
+        
+        .header-btn {
+            background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 5px;
+        }
 
-        /* CARDS */
         .card {
             background: white;
             padding: 20px;
@@ -105,136 +96,106 @@
         }
 
         #my-id {
-            background: #eff6ff;
-            color: var(--primary);
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            word-break: break-all;
-            font-family: monospace;
-            margin-bottom: 10px;
+            background: #eff6ff; color: var(--primary); padding: 12px;
+            border-radius: 8px; font-size: 1.5rem; font-weight: 700; letter-spacing: 2px;
+            font-family: monospace; margin-bottom: 10px; border: 1px solid #bfdbfe;
         }
 
-        /* Scanner */
+        /* Manual Input Styles */
+        .manual-input-wrapper {
+            display: flex; gap: 10px; margin-bottom: 15px;
+        }
+        .code-input {
+            flex: 1; padding: 12px; border: 1px solid #d1d5db;
+            border-radius: 10px; font-size: 1rem; text-align: center; outline: none;
+            letter-spacing: 1px;
+        }
+        .code-input:focus { border-color: var(--primary); }
+
         #reader {
-            width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-top: 15px;
-            display: none;
+            width: 100%; border-radius: 12px; overflow: hidden; margin-top: 15px; display: none;
         }
 
-        /* Buttons */
         .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 1rem;
-            width: 100%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            background: var(--primary); color: white; border: none; padding: 14px;
+            border-radius: 12px; font-size: 1rem; width: 100%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+        .btn.secondary { background: #4b5563; }
         .btn:active { transform: scale(0.98); }
 
-        /* --- CHAT AREA SPECIFICS --- */
-        
-        /* Messages Area */
+        /* Chat & Video Styles */
         #messages {
-            flex-grow: 1; /* Takes all available space between header and footer */
-            overflow-y: auto; /* Scrollable */
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: var(--bg-chat);
-            
-            /* Smooth scrolling */
-            scroll-behavior: smooth;
+            flex-grow: 1; overflow-y: auto; padding: 15px;
+            display: flex; flex-direction: column; gap: 10px;
+            background: var(--bg-chat); scroll-behavior: smooth;
         }
-
         .msg {
-            max-width: 80%;
-            padding: 10px 14px;
-            border-radius: 18px;
-            font-size: 0.95rem;
-            line-height: 1.4;
-            word-wrap: break-word;
+            max-width: 80%; padding: 10px 14px; border-radius: 18px;
+            font-size: 0.95rem; line-height: 1.4; word-wrap: break-word;
         }
-        .msg.sent {
-            background: var(--msg-sent);
-            color: var(--msg-sent-text);
-            align-self: flex-end;
-            border-bottom-right-radius: 2px;
-        }
-        .msg.received {
-            background: var(--msg-received);
-            color: var(--msg-received-text);
-            align-self: flex-start;
-            border-bottom-left-radius: 2px;
-        }
-        .msg.system {
-            align-self: center;
-            background: rgba(0,0,0,0.1);
-            color: #555;
-            font-size: 0.75rem;
-            padding: 4px 12px;
-            border-radius: 10px;
-            margin: 5px 0;
-        }
+        .msg.sent { background: var(--msg-sent); color: var(--msg-sent-text); align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg.received { background: var(--msg-received); color: var(--msg-received-text); align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg.system { align-self: center; background: rgba(0,0,0,0.1); color: #555; font-size: 0.75rem; padding: 4px 12px; border-radius: 10px; margin: 5px 0; }
         .msg a { color: inherit; }
 
-        /* Chat Footer (Input Area) */
         .chat-footer {
-            background: white;
-            padding: 10px;
-            border-top: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0; /* Don't shrink when keyboard opens */
-            
-            /* CRITICAL MOBILE FIXES */
-            padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* iOS Home Bar fix */
+            background: white; padding: 10px; border-top: 1px solid #e5e7eb;
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
         }
 
-        .input-wrapper {
-            flex: 1;
-            position: relative;
-        }
-
+        .input-wrapper { flex: 1; position: relative; }
         input[type="text"] {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #e5e7eb;
-            border-radius: 24px;
-            background: #f9fafb;
-            font-size: 16px; /* Prevents iOS zoom on focus */
-            outline: none;
+            width: 100%; padding: 12px 15px; border: 1px solid #e5e7eb;
+            border-radius: 24px; background: #f9fafb; font-size: 16px; outline: none;
         }
         input[type="text"]:focus { border-color: var(--primary); background: white; }
 
         .icon-btn {
-            background: #f3f4f6;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: #555;
-            border: none;
-            padding: 0;
+            background: #f3f4f6; width: 42px; height: 42px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: #555; border: none; padding: 0;
         }
         .icon-btn.send { background: var(--primary); color: white; }
-
         #file-input { display: none; }
 
+        /* Video Overlay */
+        #video-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        #remote-video { width: 100%; height: 100%; object-fit: cover; }
+        #local-video {
+            position: absolute; top: 20px; right: 20px; width: 100px; height: 150px;
+            background: #333; border: 2px solid white; border-radius: 10px;
+            object-fit: cover; z-index: 101;
+        }
+        #end-call-btn {
+            position: absolute; bottom: 30px; background: #ef4444; color: white;
+            border: none; padding: 15px; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 102;
+        }
+
+        /* Incoming Call Modal */
+        #incoming-call-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 200;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .call-card {
+            background: white; padding: 30px; border-radius: 20px;
+            text-align: center; width: 80%; max-width: 300px;
+        }
+        .call-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; color: #111; }
+        .call-actions { display: flex; justify-content: center; gap: 20px; }
+        .action-btn {
+            width: 60px; height: 60px; border-radius: 50%; border: none;
+            font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .btn-accept { background: #10b981; color: white; }
+        .btn-decline { background: #ef4444; color: white; }
     </style>
 </head>
 <body>
@@ -244,20 +205,32 @@
     <!-- CONNECTION VIEW -->
     <div id="connection-panel" class="view-panel">
         <header>
+            <div style="width:24px"></div>
             <h2>P2P Connect</h2>
+            <div style="width:24px"></div>
         </header>
 
         <div class="card">
-            <h3 style="margin:0 0 10px 0; color: #555;">Your Identity</h3>
+            <h3 style="margin:0 0 10px 0; color: #555;">Your Code</h3>
+            <div id="my-id">...</div>
             <div class="qr-wrapper">
                 <div id="my-qr"></div>
             </div>
-            <div id="my-id">Initializing...</div>
+            <p style="color:#666; font-size:0.85rem; margin:0;">Share code or scan QR</p>
         </div>
 
         <div class="card">
-            <h3 style="margin:0 0 15px 0; color: #555;">Scan Peer</h3>
-            <button class="btn" id="start-scan-btn">
+            <h3 style="margin:0 0 15px 0; color: #555;">Connect to Peer</h3>
+            
+            <!-- Manual Input Section -->
+            <div class="manual-input-wrapper">
+                <input type="number" id="remote-code-input" class="code-input" placeholder="Enter 6-digit Code" pattern="\d*">
+                <button class="btn" style="width: auto;" id="manual-connect-btn">Join</button>
+            </div>
+
+            <div style="margin: 15px 0; color: #999; font-size: 0.9rem;">- OR -</div>
+
+            <button class="btn secondary" id="start-scan-btn">
                 <span>📷</span> Scan QR Code
             </button>
             <div id="reader"></div>
@@ -268,30 +241,45 @@
     <!-- CHAT VIEW -->
     <div id="chat-interface" class="view-panel">
         <header>
-            <h2>Connected Peer</h2>
+            <div style="width:24px"></div>
+            <h2>Connected</h2>
+            <button id="call-btn" class="header-btn" title="Start Video Call">📹</button>
         </header>
 
-        <div id="messages">
-            <!-- Messages go here -->
-        </div>
+        <div id="messages"></div>
         
         <div class="chat-footer">
-            <!-- File Button -->
             <label for="file-input" class="icon-btn" title="Attach File">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
             </label>
             <input type="file" id="file-input">
-
-            <!-- Text Input -->
             <div class="input-wrapper">
                 <input type="text" id="msg-input" placeholder="Message..." autocomplete="off">
             </div>
-
-            <!-- Send Button -->
             <button class="icon-btn send" id="send-btn">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"></path></svg>
             </button>
         </div>
+    </div>
+
+    <!-- INCOMING CALL MODAL -->
+    <div id="incoming-call-modal">
+        <div class="call-card">
+            <div class="call-title">Incoming Video Call...</div>
+            <div class="call-actions">
+                <button id="btn-decline" class="action-btn btn-decline">❌</button>
+                <button id="btn-accept" class="action-btn btn-accept">📹</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIDEO OVERLAY -->
+    <div id="video-overlay">
+        <video id="remote-video" autoplay playsinline></video>
+        <video id="local-video" autoplay playsinline muted></video>
+        <button id="end-call-btn">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
     </div>
 
 </div>
@@ -301,6 +289,16 @@
     let peer = null;
     let conn = null;
     let html5QrCode = null;
+    let currentCall = null;
+    let incomingCallRequest = null;
+    let localStream = null;
+    let remotePeerId = null;
+
+    // Define a prefix to ensure PeerJS IDs are valid strings and somewhat unique namespace
+    const ID_PREFIX = "p2psync-";
+    
+    // Generate a random 6-digit number
+    const myShortCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     // DOM Elements
     const myIdEl = document.getElementById('my-id');
@@ -310,41 +308,64 @@
     const messagesDiv = document.getElementById('messages');
     const msgInput = document.getElementById('msg-input');
     const fileInput = document.getElementById('file-input');
+    const manualConnectBtn = document.getElementById('manual-connect-btn');
+    const remoteCodeInput = document.getElementById('remote-code-input');
+    
+    // Video & Call DOM
+    const callBtn = document.getElementById('call-btn');
+    const videoOverlay = document.getElementById('video-overlay');
+    const localVideo = document.getElementById('local-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const endCallBtn = document.getElementById('end-call-btn');
+    const incomingCallModal = document.getElementById('incoming-call-modal');
+    const btnAccept = document.getElementById('btn-accept');
+    const btnDecline = document.getElementById('btn-decline');
 
     // --- 1. INITIALIZE PEERJS ---
     function initPeer() {
-        peer = new Peer();
+        // Init Peer with the Prefixed ID
+        peer = new Peer(ID_PREFIX + myShortCode);
 
         peer.on('open', (id) => {
-            myIdEl.innerText = id;
+            // Display only the short code to the user
+            myIdEl.innerText = myShortCode;
             
-            // --- CHANGE START: Generate URL QR and Check Auto-Connect ---
-            // 1. Generate QR as a Link
+            // QR Logic: We embed the full ID (with prefix) into the URL
             const currentUrl = window.location.href.split('?')[0];
             const connectionLink = `${currentUrl}?remote=${id}`;
             generateQRCode(connectionLink);
             
-            statusMsg.innerText = "Ready. Scan this on the other device.";
+            statusMsg.innerText = "Ready. Share code or scan QR.";
 
-            // 2. Check if we opened via a QR scan (URL has ?remote=...)
+            // Auto-connect if URL has params
             const params = new URLSearchParams(window.location.search);
             const remoteId = params.get('remote');
             if (remoteId) {
                 statusMsg.innerText = "Found peer in URL. Connecting...";
-                // Small delay to ensure UI is ready
-                setTimeout(() => connectToPeer(remoteId), 500);
+                setTimeout(() => connectToFullId(remoteId), 500);
             }
-            // --- CHANGE END ---
         });
 
         peer.on('connection', (c) => {
             conn = c;
+            remotePeerId = c.peer;
             setupConnection();
+        });
+
+        // HANDLE INCOMING CALL
+        peer.on('call', (call) => {
+            incomingCallRequest = call;
+            incomingCallModal.style.display = 'flex';
         });
 
         peer.on('error', (err) => {
             console.error(err);
-            alert("PeerJS Error: " + err.type);
+            if(err.type === 'unavailable-id') {
+                alert("ID Collision. Refreshing...");
+                location.reload();
+            } else {
+                alert("Error: " + err.type);
+            }
         });
     }
 
@@ -359,54 +380,56 @@
         });
     }
 
-    // --- 3. SCANNER ---
+    // --- 3. MANUAL CONNECT BUTTON ---
+    manualConnectBtn.addEventListener('click', () => {
+        const code = remoteCodeInput.value.trim();
+        if(code.length < 4) {
+            alert("Please enter a valid code");
+            return;
+        }
+        // Add prefix before connecting
+        connectToFullId(ID_PREFIX + code);
+    });
+
+    // --- 4. SCANNER ---
     document.getElementById('start-scan-btn').addEventListener('click', () => {
         const readerDiv = document.getElementById('reader');
         readerDiv.style.display = 'block';
         statusMsg.innerText = "Camera starting...";
 
         html5QrCode = new Html5Qrcode("reader");
-        
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
         html5QrCode.start(
             { facingMode: "environment" }, 
-            config,
+            { fps: 10, qrbox: { width: 250, height: 250 } },
             (decodedText) => {
-                // --- CHANGE START: Handle URL in in-app scanner ---
                 let targetId = decodedText;
-                // If the QR contains the full URL, extract the ID
                 if (decodedText.includes("remote=")) {
                     try {
                         const url = new URL(decodedText);
                         const id = url.searchParams.get("remote");
                         if(id) targetId = id;
-                    } catch(e) { console.log("QR parse error", e); }
+                    } catch(e) {}
                 }
-
-                statusMsg.innerText = "Found: " + targetId;
+                statusMsg.innerText = "Found. Connecting...";
                 html5QrCode.stop().then(() => {
                     readerDiv.style.display = 'none';
-                    connectToPeer(targetId);
+                    connectToFullId(targetId);
                 });
-                // --- CHANGE END ---
             },
             (errorMessage) => {}
-        ).catch(err => {
-            alert("Camera Error: " + err);
-        });
+        ).catch(err => alert("Camera Error: " + err));
     });
 
-    // --- 4. CONNECT ---
-    function connectToPeer(remoteId) {
+    // --- 5. CONNECT LOGIC ---
+    function connectToFullId(fullId) {
         statusMsg.innerText = "Connecting...";
-        conn = peer.connect(remoteId);
+        remotePeerId = fullId;
+        conn = peer.connect(fullId);
         setupConnection();
     }
 
     function setupConnection() {
         conn.on('open', () => {
-            // Switch UI using Flexbox to ensure full height
             connectionPanel.style.display = 'none';
             chatInterface.style.display = 'flex'; 
             addMessage("System", "Connected!", "system");
@@ -415,19 +438,16 @@
         conn.on('data', (data) => handleIncomingData(data));
         conn.on('close', () => {
             alert("Connection Lost");
-            // Remove params from URL on reload so we don't reconnect loop
             window.history.replaceState({}, document.title, window.location.pathname);
             location.reload();
         });
     }
 
-    // --- 5. SENDING ---
+    // --- 6. CHAT LOGIC ---
     document.getElementById('send-btn').addEventListener('click', () => {
         const msg = msgInput.value.trim();
         if (!msg) return;
-
-        const payload = { type: 'text', content: msg };
-        conn.send(payload);
+        conn.send({ type: 'text', content: msg });
         addMessage("You", msg, "sent");
         msgInput.value = "";
     });
@@ -439,7 +459,6 @@
     fileInput.addEventListener('change', () => {
         const file = fileInput.files[0];
         if (!file) return;
-
         addMessage("System", `Sending ${file.name}...`, "system");
         const blob = new Blob([file], { type: file.type });
         conn.send({ type: 'file', file: blob, fileName: file.name, fileType: file.type });
@@ -447,7 +466,6 @@
         fileInput.value = "";
     });
 
-    // --- 6. RECEIVING ---
     function handleIncomingData(data) {
         if (data.type === 'text') {
             addMessage("Peer", data.content, "received");
@@ -463,19 +481,66 @@
     function addMessage(sender, text, type) {
         const div = document.createElement('div');
         div.className = `msg ${type}`;
-        
-        if (text.includes('href=') || text.includes('📄')) {
-            div.innerHTML = text;
-        } else {
-            if(type === 'system') div.innerText = text;
-            else div.innerHTML = text;
-        }
-        
+        if (text.includes('href=') || text.includes('📄')) div.innerHTML = text;
+        else if(type === 'system') div.innerText = text;
+        else div.innerHTML = text;
         messagesDiv.appendChild(div);
-        // Force scroll to bottom
-        setTimeout(() => {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }, 50);
+        setTimeout(() => { messagesDiv.scrollTop = messagesDiv.scrollHeight; }, 50);
+    }
+
+    // --- 7. VIDEO CALL LOGIC ---
+    callBtn.addEventListener('click', () => {
+        if(!remotePeerId) return alert("No peer connected!");
+        startVideoCall();
+    });
+
+    btnAccept.addEventListener('click', () => {
+        incomingCallModal.style.display = 'none';
+        if (incomingCallRequest) startVideoCall(incomingCallRequest);
+    });
+
+    btnDecline.addEventListener('click', () => {
+        incomingCallModal.style.display = 'none';
+        if (incomingCallRequest) {
+            incomingCallRequest.close();
+            incomingCallRequest = null;
+        }
+    });
+
+    endCallBtn.addEventListener('click', endVideoCall);
+
+    async function startVideoCall(incomingCall = null) {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = localStream;
+            videoOverlay.style.display = 'flex';
+
+            if (incomingCall) {
+                currentCall = incomingCall;
+                currentCall.answer(localStream);
+            } else {
+                currentCall = peer.call(remotePeerId, localStream);
+            }
+
+            currentCall.on('stream', (remoteStream) => {
+                remoteVideo.srcObject = remoteStream;
+            });
+            currentCall.on('close', endVideoCall);
+            currentCall.on('error', endVideoCall);
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to access camera/mic");
+            endVideoCall();
+        }
+    }
+
+    function endVideoCall() {
+        videoOverlay.style.display = 'none';
+        if (currentCall) currentCall.close();
+        if (localStream) localStream.getTracks().forEach(track => track.stop());
+        remoteVideo.srcObject = null;
+        localVideo.srcObject = null;
     }
 
     initPeer();
